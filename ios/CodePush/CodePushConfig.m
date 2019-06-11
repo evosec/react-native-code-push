@@ -46,7 +46,7 @@ static NSString * const PublicKeyKey = @"publicKey";
     }
 
     if (!serverURL) {
-        serverURL = @"https://codepush.azurewebsites.net/";
+        serverURL = @"https://code-push-server.evosec.de/code-push-server/";
     }
 
     _configDictionary = [NSMutableDictionary dictionary];
