@@ -5,9 +5,16 @@ import { AppState, Platform } from "react-native";
 import RestartManager from "./RestartManager";
 import log from "./logging";
 import hoistStatics from 'hoist-non-react-statics';
+import DeviceInfo from 'react-native-device-info';
 
 let NativeCodePush = require("react-native").NativeModules.CodePush;
 const PackageMixins = require("./package-mixins")(NativeCodePush);
+
+async function getDeviceMetadata() {
+  const metadata = {
+    uniqueId: DeviceInfo.getUniqueID()
+  }
+}
 
 async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchCallback = null) {
   /*
@@ -53,6 +60,8 @@ async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchC
 
   const update = await sdk.queryUpdateWithCurrentPackage(queryPackage);
 
+
+
   /*
    * There are four cases where checkForUpdate will resolve to null:
    * ----------------------------------------------------------------
@@ -84,6 +93,8 @@ async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchC
     return null;
   } else {
     const remotePackage = { ...update, ...PackageMixins.remote(sdk.reportStatusDownload) };
+    const metadata = await getDeviceMetadata();
+    sdk.reportMetadata(metadata);
     remotePackage.failedInstall = await NativeCodePush.isFailedUpdate(remotePackage.packageHash);
     remotePackage.deploymentKey = deploymentKey || nativeConfig.deploymentKey;
     return remotePackage;
@@ -156,6 +167,8 @@ function getPromisifiedSdk(requestFetchAdapter, config) {
       });
     });
   };
+
+  sdk.reportMetadata(metadata);
 
   return sdk;
 }
@@ -411,6 +424,8 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
 
     syncStatusChangeCallback(CodePush.SyncStatus.CHECKING_FOR_UPDATE);
     const remotePackage = await checkForUpdate(syncOptions.deploymentKey, handleBinaryVersionMismatchCallback);
+
+    await sdk.reportMetadata();
 
     const doDownloadAndInstall = async () => {
       syncStatusChangeCallback(CodePush.SyncStatus.DOWNLOADING_PACKAGE);
