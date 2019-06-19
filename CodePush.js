@@ -204,6 +204,7 @@ async function tryReportStatus(statusReport, resumeListener) {
 
       const sdk = getPromisifiedSdk(requestFetchAdapter, config);
       await sdk.reportStatusDeploy(/* deployedPackage */ null, /* status */ null, previousLabelOrAppVersion, previousDeploymentKey);
+      await sdk.reportMetadata
     } else {
       const label = statusReport.package.label;
       if (statusReport.status === "DeploymentSucceeded") {
@@ -494,6 +495,8 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
         dialogButtons.push({
           text: installButtonText,
           onPress:() => {
+            const metadata = await getDeviceMetadata();
+            sdk.reportMetadata(metadata);
             doDownloadAndInstall()
               .then(resolve, reject);
           }
