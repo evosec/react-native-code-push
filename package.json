@@ -17,7 +17,7 @@
     "url": "https://github.com/Microsoft/react-native-code-push"
   },
   "dependencies": {
-    "code-push": "https://github.com/evosec/code-push/archive/c83ec382ffa5c962e9e1690797fcffe7f53a6050",
+    "code-push": "https://github.com/evosec/code-push.git#c83ec382ffa5c962e9e1690797fcffe7f53a6050",
     "glob": "^5.0.15",
     "hoist-non-react-statics": "^2.3.1",
     "inquirer": "1.1.2",
