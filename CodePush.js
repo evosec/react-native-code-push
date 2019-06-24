@@ -12,8 +12,19 @@ const PackageMixins = require("./package-mixins")(NativeCodePush);
 
 async function getDeviceMetadata() {
   const metadata = {
-    uniqueId: DeviceInfo.getUniqueID()
+    uniqueId: DeviceInfo.getUniqueID(),
+    mac: DeviceInfo.getMACAddress(),
+    serialNumber: DeviceInfo.getSerialNumber(),
+    systemName: DeviceInfo.getSystemName(),
+    totalMemory: DeviceInfo.getTotalMemory(),
+    appVersion: DeviceInfo.getVersion(),
+    lastUpdate: DeviceInfo.getLastUpdateTime(),
+    deviceName: DeviceInfo.getDeviceName(),
+    ip: DeviceInfo.getIPAddress(),
+    freeDiskSpace: DeviceInfo.getFreeDiskStorage(),
+    availableLocationProviders: DeviceInfo.getAvailableLocationProviders()
   }
+  return metadata;
 }
 
 async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchCallback = null) {
@@ -93,8 +104,6 @@ async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchC
     return null;
   } else {
     const remotePackage = { ...update, ...PackageMixins.remote(sdk.reportStatusDownload) };
-    const metadata = await getDeviceMetadata();
-    sdk.reportMetadata(metadata);
     remotePackage.failedInstall = await NativeCodePush.isFailedUpdate(remotePackage.packageHash);
     remotePackage.deploymentKey = deploymentKey || nativeConfig.deploymentKey;
     return remotePackage;
@@ -426,11 +435,14 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     syncStatusChangeCallback(CodePush.SyncStatus.CHECKING_FOR_UPDATE);
     const remotePackage = await checkForUpdate(syncOptions.deploymentKey, handleBinaryVersionMismatchCallback);
 
-    await sdk.reportMetadata();
 
     const doDownloadAndInstall = async () => {
       syncStatusChangeCallback(CodePush.SyncStatus.DOWNLOADING_PACKAGE);
       const localPackage = await remotePackage.download(downloadProgressCallback);
+
+      // Gather metadata and send them to code-push-server
+      const metadata = await getDeviceMetadata();
+      await sdk.reportMetadata(metadata);
 
       // Determine the correct install mode based on whether the update is mandatory or not.
       resolvedInstallMode = localPackage.isMandatory ? syncOptions.mandatoryInstallMode : syncOptions.installMode;
@@ -495,8 +507,6 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
         dialogButtons.push({
           text: installButtonText,
           onPress:() => {
-            const metadata = await getDeviceMetadata();
-            sdk.reportMetadata(metadata);
             doDownloadAndInstall()
               .then(resolve, reject);
           }
