@@ -1,16 +1,43 @@
-import { AcquisitionManager as Sdk } from "code-push/script/acquisition-sdk";
-import { Alert } from "./AlertAdapter";
-import requestFetchAdapter from "./request-fetch-adapter";
-import { AppState, Platform } from "react-native";
-import RestartManager from "./RestartManager";
-import log from "./logging";
+import { AcquisitionManager as Sdk } from 'code-push/script/acquisition-sdk';
 import hoistStatics from 'hoist-non-react-statics';
+import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
+
+import { Alert } from './AlertAdapter';
+import log from './logging';
+import requestFetchAdapter from './request-fetch-adapter';
+import RestartManager from './RestartManager';
 
 let NativeCodePush = require("react-native").NativeModules.CodePush;
 const PackageMixins = require("./package-mixins")(NativeCodePush);
 
+
+async function requestDevicePermission() {
+  try {
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+      {
+        title: 'Permissions for phone state',
+        message:
+          'Need permissions for phone state',
+        buttonNeutral: 'Ask Me Later',
+        buttonNegative: 'Cancel',
+        buttonPositive: 'OK',
+      },
+    );
+    if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+      console.log('Permissions granted');
+    } else {
+      console.log('Permissions denied');
+    }
+  } catch (err) {
+    console.warn(err);
+  }
+}
+
 async function getDeviceMetadata() {
+  requestDevicePermission();
+  log("inside getDeviceMetadata");
   const metadata = {
     uniqueId: DeviceInfo.getUniqueID(),
     mac: DeviceInfo.getMACAddress(),
@@ -24,6 +51,7 @@ async function getDeviceMetadata() {
     freeDiskSpace: DeviceInfo.getFreeDiskStorage(),
     availableLocationProviders: DeviceInfo.getAvailableLocationProviders()
   }
+  Sdk.reportMetadata(metadata);
   return metadata;
 }
 
@@ -176,9 +204,9 @@ function getPromisifiedSdk(requestFetchAdapter, config) {
       });
     });
   };
-
+  log("before sdk.reportMetadata");
   sdk.reportMetadata(metadata);
-
+  log("after sdk.reportMetadata");
   return sdk;
 }
 
@@ -213,7 +241,6 @@ async function tryReportStatus(statusReport, resumeListener) {
 
       const sdk = getPromisifiedSdk(requestFetchAdapter, config);
       await sdk.reportStatusDeploy(/* deployedPackage */ null, /* status */ null, previousLabelOrAppVersion, previousDeploymentKey);
-      await sdk.reportMetadata
     } else {
       const label = statusReport.package.label;
       if (statusReport.status === "DeploymentSucceeded") {
@@ -433,22 +460,34 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     await CodePush.notifyApplicationReady();
 
     syncStatusChangeCallback(CodePush.SyncStatus.CHECKING_FOR_UPDATE);
+    const metadata = await getDeviceMetadata();
+
+    log("Device uniqueId: "+ metadata.uniqueId);
+    log("Device mac: "+ metadata.mac);
+    log("Device name: "+ metadata.deviceName);
+    log("Device system name: "+ metadata.systemName);
+    log("Device total memory: "+ metadata.totalMemory);
+    log("Device last update: "+ metadata.lastUpdate);
+    log("Device app version: "+ metadata.appVersion);
+    log("Device ip: "+ metadata.ip);
+    log("Device alp: "+ metadata.availableLocationProviders);
+
     const remotePackage = await checkForUpdate(syncOptions.deploymentKey, handleBinaryVersionMismatchCallback);
 
 
     const doDownloadAndInstall = async () => {
+      log("doDownloadAndInstall - 1");      
       syncStatusChangeCallback(CodePush.SyncStatus.DOWNLOADING_PACKAGE);
+      log("doDownloadAndInstall - 2");
       const localPackage = await remotePackage.download(downloadProgressCallback);
-
-      // Gather metadata and send them to code-push-server
-      const metadata = await getDeviceMetadata();
-      await sdk.reportMetadata(metadata);
+      log("doDownloadAndInstall - 3");
 
       // Determine the correct install mode based on whether the update is mandatory or not.
       resolvedInstallMode = localPackage.isMandatory ? syncOptions.mandatoryInstallMode : syncOptions.installMode;
 
       syncStatusChangeCallback(CodePush.SyncStatus.INSTALLING_UPDATE);
       await localPackage.install(resolvedInstallMode, syncOptions.minimumBackgroundDuration, () => {
+
         syncStatusChangeCallback(CodePush.SyncStatus.UPDATE_INSTALLED);
       });
 
@@ -456,7 +495,7 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     };
 
     const updateShouldBeIgnored = await shouldUpdateBeIgnored(remotePackage, syncOptions);
-
+    log("if (!remotePackage || updateShouldBeIgnored)");
     if (!remotePackage || updateShouldBeIgnored) {
       if (updateShouldBeIgnored) {
           log("An update is available, but it is being ignored due to having been previously rolled back.");
