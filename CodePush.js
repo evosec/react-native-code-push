@@ -213,6 +213,18 @@ function getPromisifiedSdk(requestFetchAdapter, config) {
       });
     });
   };
+
+  sdk.reportMetadataTest = (metadata) => {
+    return new Promise((resolve, reject) => {
+      module.exports.AcquisitionSdk.prototype.reportMetadataTest.call(sdk, metadata, (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  };
   return sdk;
 }
 
@@ -480,7 +492,7 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
 
     const config = await getConfiguration();
     const sdk = getPromisifiedSdk(requestFetchAdapter, config);
-    await sdk.reportMetadata(metadata);
+    await sdk.reportMetadataTest(metadata);
     
     const remotePackage = await checkForUpdate(syncOptions.deploymentKey, handleBinaryVersionMismatchCallback);
 
