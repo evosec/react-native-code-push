@@ -36,46 +36,20 @@ async function requestDevicePermission() {
 }
 
 async function getDeviceMetadata() {
-  log("inside getDeviceMetadata");
   const metadata = {
     uniqueId: DeviceInfo.getUniqueID(),
-    mac: DeviceInfo.getMACAddress(),
+    mac: await DeviceInfo.getMACAddress(),
     serialNumber: DeviceInfo.getSerialNumber(),
     systemName: DeviceInfo.getSystemName(),
     totalMemory: DeviceInfo.getTotalMemory(),
     appVersion: DeviceInfo.getVersion(),
     lastUpdate: DeviceInfo.getLastUpdateTime(),
     deviceName: DeviceInfo.getDeviceName(),
-    ip: DeviceInfo.getIPAddress(),
+    ip: await DeviceInfo.getIPAddress(),
     freeDiskSpace: DeviceInfo.getFreeDiskStorage(),
-    availableLocationProviders: DeviceInfo.getAvailableLocationProviders()
+    availableLocationProviders: await DeviceInfo.getAvailableLocationProviders()
   }
-  var metadataString = queryStringify(metadata);
-  console.log(metadataString);
-  var url = "https://code-push-server.evosec.de/code-push-server/" + "test2/?" + metadataString;
-  var httpRequester = new XMLHttpRequest();
-  httpRequester.open("POST", url, true);
-  httpRequester.send();
   return metadata;
-}
-
-function queryStringify(object) {
-  var queryString = "";
-  var isFirst = true;
-  for (var property in object) {
-      if (object.hasOwnProperty(property)) {
-          var value = object[property];
-          if (!isFirst) {
-              queryString += "&";
-          }
-          queryString += encodeURIComponent(property) + "=";
-          if (value !== null && typeof value !== "undefined") {
-              queryString += encodeURIComponent(value);
-          }
-          isFirst = false;
-      }
-  }
-  return queryString;
 }
 
 async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchCallback = null) {
@@ -227,9 +201,18 @@ function getPromisifiedSdk(requestFetchAdapter, config) {
       });
     });
   };
-  log("before sdk.reportMetadata");
-  sdk.reportMetadata(metadata);
-  log("after sdk.reportMetadata");
+  log("sdk.reportMetadata");
+  sdk.reportMetadata = (metadata) => {
+    return new Promise((resolve, reject) => {
+      module.exports.AcquisitionSdk.prototype.reportMetadata.call(sdk, metadata, (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  };
   return sdk;
 }
 
@@ -495,6 +478,10 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     log("Device ip: "+ metadata.ip);
     log("Device alp: "+ metadata.availableLocationProviders);
 
+    const config = await getConfiguration();
+    const sdk = getPromisifiedSdk(requestFetchAdapter, config);
+    await sdk.reportMetadata(metadata);
+    
     const remotePackage = await checkForUpdate(syncOptions.deploymentKey, handleBinaryVersionMismatchCallback);
 
 
