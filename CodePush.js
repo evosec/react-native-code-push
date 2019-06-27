@@ -14,21 +14,21 @@ const PackageMixins = require("./package-mixins")(NativeCodePush);
 
 async function requestDevicePermission() {
   try {
-    const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+    const accessCoarseLocation = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
       {
-        title: 'Permissions for phone state',
+        title: 'Permissions for phone ACCESS_COARSE_LOCATION',
         message:
-          'Need permissions for phone state',
+          'Need permissions for phone ACCESS_COARSE_LOCATION',
         buttonNeutral: 'Ask Me Later',
         buttonNegative: 'Cancel',
         buttonPositive: 'OK',
       },
     );
-    if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-      console.log('Permissions granted');
+    if (accessCoarseLocation === PermissionsAndroid.RESULTS.GRANTED) {
+      console.log('Permissions for ACCESS_COARSE_LOCATION granted');
     } else {
-      console.log('Permissions denied');
+      console.log('Permissions for ACCESS_COARSE_LOCATION denied');
     }
   } catch (err) {
     console.warn(err);
@@ -36,12 +36,15 @@ async function requestDevicePermission() {
 }
 
 async function getDeviceMetadata() {
+  await requestDevicePermission();
+  
   const metadata = {
     uniqueId: DeviceInfo.getUniqueID(),
     mac: await DeviceInfo.getMACAddress(),
     serialNumber: DeviceInfo.getSerialNumber(),
     systemName: DeviceInfo.getSystemName(),
     totalMemory: DeviceInfo.getTotalMemory(),
+    appName: DeviceInfo.getApplicationName(),
     appVersion: DeviceInfo.getVersion(),
     lastUpdate: DeviceInfo.getLastUpdateTime(),
     deviceName: DeviceInfo.getDeviceName(),
