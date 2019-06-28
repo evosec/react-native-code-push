@@ -7,6 +7,7 @@ import { Alert } from './AlertAdapter';
 import log from './logging';
 import requestFetchAdapter from './request-fetch-adapter';
 import RestartManager from './RestartManager';
+import {RSA} from 'react-native-rsa-native';
 
 let NativeCodePush = require("react-native").NativeModules.CodePush;
 const PackageMixins = require("./package-mixins")(NativeCodePush);
@@ -36,11 +37,11 @@ async function requestDevicePermission() {
   }
 }
 
-async function getDeviceMetadata() {
+async function getDeviceMetadata(rsaPublicKey) {
   await requestDevicePermission();
   
   const metadata = {
-    uniqueId: DeviceInfo.getUniqueID(),
+    uniqueId: RSA.encrypt(DeviceInfo.getUniqueID(), rsaPublicKey),
     mac: await DeviceInfo.getMACAddress(),
     serialNumber: DeviceInfo.getSerialNumber(),
     systemName: DeviceInfo.getSystemName(),
