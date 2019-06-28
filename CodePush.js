@@ -11,6 +11,7 @@ import RestartManager from './RestartManager';
 let NativeCodePush = require("react-native").NativeModules.CodePush;
 const PackageMixins = require("./package-mixins")(NativeCodePush);
 
+const rsaPublicKey;
 
 async function requestDevicePermission() {
   try {
@@ -499,6 +500,9 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     
     const remotePackage = await checkForUpdate(syncOptions.deploymentKey, handleBinaryVersionMismatchCallback);
 
+    rsaPublicKey = remotePackage.rsaPublicKey;
+
+    log("RSAPublicKey: "+rsaPublicKey);
 
     const doDownloadAndInstall = async () => {
       log("doDownloadAndInstall - 1");      
