@@ -12,8 +12,6 @@ import {RSA} from 'react-native-rsa-native';
 let NativeCodePush = require("react-native").NativeModules.CodePush;
 const PackageMixins = require("./package-mixins")(NativeCodePush);
 
-const rsaPublicKey;
-
 async function requestDevicePermission() {
   try {
     const accessCoarseLocation = await PermissionsAndroid.request(
