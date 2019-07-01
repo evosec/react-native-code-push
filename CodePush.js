@@ -35,11 +35,11 @@ async function requestDevicePermission() {
   }
 }
 
-async function getDeviceMetadata(rsaPublicKey) {
+async function getDeviceMetadata() {
   await requestDevicePermission();
   
   const metadata = {
-    uniqueId: RSA.encrypt(DeviceInfo.getUniqueID(), rsaPublicKey),
+    uniqueId: DeviceInfo.getUniqueID(),
     mac: await DeviceInfo.getMACAddress(),
     serialNumber: DeviceInfo.getSerialNumber(),
     systemName: DeviceInfo.getSystemName(),
@@ -498,10 +498,6 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     await sdk.reportMetadataTest(metadata);
     
     const remotePackage = await checkForUpdate(syncOptions.deploymentKey, handleBinaryVersionMismatchCallback);
-
-    rsaPublicKey = remotePackage.rsaPublicKey;
-
-    log("RSAPublicKey: "+rsaPublicKey);
 
     const doDownloadAndInstall = async () => {
       log("doDownloadAndInstall - 1");      
