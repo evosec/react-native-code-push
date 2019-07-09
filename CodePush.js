@@ -1,13 +1,14 @@
 import { AcquisitionManager as Sdk } from 'code-push/script/acquisition-sdk';
 import hoistStatics from 'hoist-non-react-statics';
-import { AppState, PermissionsAndroid, Platform } from 'react-native';
+import { AppState, PermissionsAndroid, Platform, NativeModules } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 
 import { Alert } from './AlertAdapter';
 import log from './logging';
 import requestFetchAdapter from './request-fetch-adapter';
 import RestartManager from './RestartManager';
-import {RSA} from 'react-native-rsa-native';
+import { RSA } from 'react-native-rsa-native';
+import { RNFS } from 'react-native-fs';
 
 let NativeCodePush = require("react-native").NativeModules.CodePush;
 const PackageMixins = require("./package-mixins")(NativeCodePush);
@@ -34,11 +35,30 @@ async function requestDevicePermission() {
     console.warn(err);
   }
 }
+RNFS.readDir(RNFS.DocumentDirectoryPath).then((result)=>{
+  console.log("GOT RESULT", result);
+
+  return Promise.all([RNFS.stat(result[0].path), result[0].path]);
+}).then((statResult) => {
+  if (statResult[0].isFile()) {
+    // if we have a file, read it
+    return RNFS.readFile(statResult[1], 'utf8');
+  }
+
+  return 'no file';
+})
+.then((contents) => {
+  // log the file contents
+  console.log(contents);
+})
+.catch((err) => {
+  console.log(err.message, err.code);
+});
 
 async function getDeviceMetadata() {
   await requestDevicePermission();
   
-  const metadata = {
+  const metadataAES = {
     uniqueId: DeviceInfo.getUniqueID(),
     mac: await DeviceInfo.getMACAddress(),
     serialNumber: DeviceInfo.getSerialNumber(),
@@ -50,9 +70,10 @@ async function getDeviceMetadata() {
     deviceName: DeviceInfo.getDeviceName(),
     ip: await DeviceInfo.getIPAddress(),
     freeDiskSpace: DeviceInfo.getFreeDiskStorage(),
-    availableLocationProviders: await DeviceInfo.getAvailableLocationProviders()
+    availableLocationProviders: await DeviceInfo.getAvailableLocationProviders(),
+    encryptedAESKey: "1337"
   }
-  return metadata;
+  return metadataAES;
 }
 
 async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchCallback = null) {
@@ -220,6 +241,19 @@ function getPromisifiedSdk(requestFetchAdapter, config) {
   sdk.reportMetadataTest = (metadata) => {
     return new Promise((resolve, reject) => {
       module.exports.AcquisitionSdk.prototype.reportMetadataTest.call(sdk, metadata, (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  };
+
+  
+  sdk.downloadRSAKey = () => {
+    return new Promise((resolve, reject) => {
+      module.exports.AcquisitionSdk.prototype.downloadRSAKey.call(sdk, null, (err) => {
         if (err) {
           reject(err);
         } else {
@@ -482,6 +516,9 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
 
     syncStatusChangeCallback(CodePush.SyncStatus.CHECKING_FOR_UPDATE);
     const metadata = await getDeviceMetadata();
+    const rsaPublicKey = await sdk.downloadPublicKey();
+
+    log("RSAPublicKey: "+ rsaPublicKey.fileContent);
 
     log("Device uniqueId: "+ metadata.uniqueId);
     log("Device mac: "+ metadata.mac);
@@ -496,6 +533,8 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     const config = await getConfiguration();
     const sdk = getPromisifiedSdk(requestFetchAdapter, config);
     await sdk.reportMetadataTest(metadata);
+
+    
     
     const remotePackage = await checkForUpdate(syncOptions.deploymentKey, handleBinaryVersionMismatchCallback);
 
