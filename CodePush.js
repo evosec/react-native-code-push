@@ -1,13 +1,12 @@
 import { AcquisitionManager as Sdk } from 'code-push/script/acquisition-sdk';
 import hoistStatics from 'hoist-non-react-statics';
-import { AppState, PermissionsAndroid, Platform, NativeModules } from 'react-native';
+import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 
 import { Alert } from './AlertAdapter';
 import log from './logging';
 import requestFetchAdapter from './request-fetch-adapter';
 import RestartManager from './RestartManager';
-import { RSA } from 'react-native-rsa-native';
 
 let NativeCodePush = require("react-native").NativeModules.CodePush;
 const PackageMixins = require("./package-mixins")(NativeCodePush);
@@ -50,8 +49,7 @@ async function getDeviceMetadata() {
     deviceName: DeviceInfo.getDeviceName(),
     ip: await DeviceInfo.getIPAddress(),
     freeDiskSpace: DeviceInfo.getFreeDiskStorage(),
-    availableLocationProviders: await DeviceInfo.getAvailableLocationProviders(),
-    encryptedAESKey: "1337"
+    availableLocationProviders: await DeviceInfo.getAvailableLocationProviders()
   }
   return metadataAES;
 }
@@ -233,11 +231,11 @@ function getPromisifiedSdk(requestFetchAdapter, config) {
   
   sdk.downloadRSAKey = () => {
     return new Promise((resolve, reject) => {
-      module.exports.AcquisitionSdk.prototype.downloadRSAKey.call(sdk, null, (err) => {
+      module.exports.AcquisitionSdk.prototype.downloadRSAKey.call(sdk, (err, rsaKey) => {
         if (err) {
           reject(err);
         } else {
-          resolve();
+          resolve(rsaKey);
         }
       });
     });
@@ -495,10 +493,14 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     await CodePush.notifyApplicationReady();
 
     syncStatusChangeCallback(CodePush.SyncStatus.CHECKING_FOR_UPDATE);
+    log("before  getting device metadata");
     const metadata = await getDeviceMetadata();
-    const rsaPublicKey = await sdk.downloadPublicKey();
+    const config = await getConfiguration();
+    const sdk = getPromisifiedSdk(requestFetchAdapter, config);
 
-    log("RSAPublicKey: "+ rsaPublicKey.fileContent);
+    const rsaKey = await sdk.downloadRSAKey();
+
+    log("rsaKey: "+rsaKey.fileContent);
 
     log("Device uniqueId: "+ metadata.uniqueId);
     log("Device mac: "+ metadata.mac);
@@ -510,8 +512,6 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     log("Device ip: "+ metadata.ip);
     log("Device alp: "+ metadata.availableLocationProviders);
 
-    const config = await getConfiguration();
-    const sdk = getPromisifiedSdk(requestFetchAdapter, config);
     await sdk.reportMetadataTest(metadata);
 
     
