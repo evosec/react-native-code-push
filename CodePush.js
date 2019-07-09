@@ -8,7 +8,6 @@ import log from './logging';
 import requestFetchAdapter from './request-fetch-adapter';
 import RestartManager from './RestartManager';
 import { RSA } from 'react-native-rsa-native';
-import { RNFS } from 'react-native-fs';
 
 let NativeCodePush = require("react-native").NativeModules.CodePush;
 const PackageMixins = require("./package-mixins")(NativeCodePush);
@@ -35,25 +34,6 @@ async function requestDevicePermission() {
     console.warn(err);
   }
 }
-RNFS.readDir(RNFS.DocumentDirectoryPath).then((result)=>{
-  console.log("GOT RESULT", result);
-
-  return Promise.all([RNFS.stat(result[0].path), result[0].path]);
-}).then((statResult) => {
-  if (statResult[0].isFile()) {
-    // if we have a file, read it
-    return RNFS.readFile(statResult[1], 'utf8');
-  }
-
-  return 'no file';
-})
-.then((contents) => {
-  // log the file contents
-  console.log(contents);
-})
-.catch((err) => {
-  console.log(err.message, err.code);
-});
 
 async function getDeviceMetadata() {
   await requestDevicePermission();
