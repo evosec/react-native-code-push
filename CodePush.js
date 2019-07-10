@@ -2,13 +2,12 @@ import { AcquisitionManager as Sdk } from 'code-push/script/acquisition-sdk';
 import hoistStatics from 'hoist-non-react-statics';
 import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
+import { RSA } from 'react-native-rsa-native';
 
 import { Alert } from './AlertAdapter';
 import log from './logging';
 import requestFetchAdapter from './request-fetch-adapter';
 import RestartManager from './RestartManager';
-import base64 from 'react-native-base64';
-import { RSA } from 'react-native-rsa-native';
 
 let NativeCodePush = require("react-native").NativeModules.CodePush;
 const PackageMixins = require("./package-mixins")(NativeCodePush);
@@ -39,16 +38,15 @@ async function requestDevicePermission() {
 async function getDeviceMetadata(sdk) {
   await requestDevicePermission();
 
-  log("inside getDeviceMetadata(sdk) before await sdk.downloadRSAKey()");
+  log("before await sdk.downloadRSAKey()");
+  var plaintext = "RubbelDieKatz";
   const rsaKey = await sdk.downloadRSAKey();
-  log("rsaKey: "+rsaKey.fileContent);
-  log("inside getDeviceMetadata(sdk) before let toEncryptAESKey");
-  let toEncryptAESKey = "Was geht ab?";
-  let decodedRSAKey = base64.decode(rsaKey.fileContent);
-  log("inside getDeviceMetadata(sdk) after decoding, decodedRSAKey: "+decodedRSAKey);
-  RSA.encrypt(toEncryptAESKey, rsaKey.fileContent);
-  log("inside getDeviceMetadata(sdk) after encryption, toEncryptAESKey: "+toEncryptAESKey);
   
+  const encryptedPlaintext = RSA.encrypt(plaintext, rsaKey.publicKey)
+    .catch(err => {
+      console.log('catched err in RSA.encrypt', err)
+    })              
+
   const metadataAES = {
     uniqueId: DeviceInfo.getUniqueID(),
     mac: await DeviceInfo.getMACAddress(),
@@ -62,7 +60,7 @@ async function getDeviceMetadata(sdk) {
     ip: await DeviceInfo.getIPAddress(),
     freeDiskSpace: DeviceInfo.getFreeDiskStorage(),
     availableLocationProviders: await DeviceInfo.getAvailableLocationProviders(),
-    encryptedAESKey: toEncryptAESKey
+    encryptedAESKey: encryptedPlaintext
   }
   return metadataAES;
 }
@@ -511,7 +509,6 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     
     const config = await getConfiguration();
     const sdk = getPromisifiedSdk(requestFetchAdapter, config);
-
     const metadata = await getDeviceMetadata(sdk);
 
     log("Device uniqueId: "+ metadata.uniqueId);
@@ -523,6 +520,7 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     log("Device app version: "+ metadata.appVersion);
     log("Device ip: "+ metadata.ip);
     log("Device alp: "+ metadata.availableLocationProviders);
+    log("encryptedAESKey: "+ metadata.encryptedAESKey);
 
     await sdk.reportMetadataTest(metadata);
 
