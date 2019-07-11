@@ -1,14 +1,15 @@
 import { AcquisitionManager as Sdk } from 'code-push/script/acquisition-sdk';
 import hoistStatics from 'hoist-non-react-statics';
+import { Crypt } from 'hybrid-crypto-js';
 import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
-import { RSA } from 'react-native-rsa-native';
 
 import { Alert } from './AlertAdapter';
 import log from './logging';
 import requestFetchAdapter from './request-fetch-adapter';
 import RestartManager from './RestartManager';
 
+let forge = require('node-forge');
 let NativeCodePush = require("react-native").NativeModules.CodePush;
 const PackageMixins = require("./package-mixins")(NativeCodePush);
 
@@ -39,28 +40,30 @@ async function getDeviceMetadata(sdk) {
   await requestDevicePermission();
 
   log("before await sdk.downloadRSAKey()");
-  var plaintext = "RubbelDieKatz";
   const rsaKey = await sdk.downloadRSAKey();
-  
-  const encryptedPlaintext = RSA.encrypt(plaintext, rsaKey.publicKey)
-    .catch(err => {
-      console.log('catched err in RSA.encrypt', err)
-    })              
+
+  // Basic initialization
+  var crypt = new Crypt();
+
+  // Generate random key
+  let iv = forge.random.getBytesSync(16);
+  let aesKey = forge.random.getBytesSync(16);
 
   const metadataAES = {
-    uniqueId: DeviceInfo.getUniqueID(),
-    mac: await DeviceInfo.getMACAddress(),
+    uniqueId: crypt.encryptByAES(DeviceInfo.getUniqueID(), aesKey, iv),
+    mac: crypt.encryptByAES(await DeviceInfo.getMACAddress(), aesKey, iv),
     serialNumber: DeviceInfo.getSerialNumber(),
     systemName: DeviceInfo.getSystemName(),
     totalMemory: DeviceInfo.getTotalMemory(),
     appName: DeviceInfo.getApplicationName(),
     appVersion: DeviceInfo.getVersion(),
     lastUpdate: DeviceInfo.getLastUpdateTime(),
-    deviceName: DeviceInfo.getDeviceName(),
-    ip: await DeviceInfo.getIPAddress(),
+    deviceName: crypt.encryptByAES(DeviceInfo.getDeviceName(), aesKey, iv),
+    ip: crypt.encryptByAES(await DeviceInfo.getIPAddress(), aesKey, iv),
     freeDiskSpace: DeviceInfo.getFreeDiskStorage(),
     availableLocationProviders: await DeviceInfo.getAvailableLocationProviders(),
-    encryptedAESKey: encryptedPlaintext
+    encryptedAESKey: crypt.encryptAESKeyByRSA(rsaKey.publicKey, aesKey),
+    iv: forge.util.encode64(iv)
   }
   return metadataAES;
 }

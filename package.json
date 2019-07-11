@@ -20,6 +20,7 @@
     "code-push": "git+https://github.com/evosec/code-push.git",
     "glob": "^5.0.15",
     "hoist-non-react-statics": "^2.3.1",
+    "hybrid-crypto-js": "git+https://github.com/evosec/hybrid-crypto-js.git",
     "inquirer": "1.1.2",
     "plist": "3.0.1",
     "react-native-base64": "0.0.2",
