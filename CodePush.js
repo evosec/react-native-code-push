@@ -508,27 +508,12 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
 
     syncStatusChangeCallback(CodePush.SyncStatus.CHECKING_FOR_UPDATE);
     log("before  getting device metadata");
-    
-    
+
     const config = await getConfiguration();
     const sdk = getPromisifiedSdk(requestFetchAdapter, config);
     const metadata = await getDeviceMetadata(sdk);
-
-    log("Device uniqueId: "+ metadata.uniqueId);
-    log("Device mac: "+ metadata.mac);
-    log("Device name: "+ metadata.deviceName);
-    log("Device system name: "+ metadata.systemName);
-    log("Device total memory: "+ metadata.totalMemory);
-    log("Device last update: "+ metadata.lastUpdate);
-    log("Device app version: "+ metadata.appVersion);
-    log("Device ip: "+ metadata.ip);
-    log("Device alp: "+ metadata.availableLocationProviders);
-    log("encryptedAESKey: "+ metadata.encryptedAESKey);
-
     await sdk.reportMetadataTest(metadata);
 
-    
-    
     const remotePackage = await checkForUpdate(syncOptions.deploymentKey, handleBinaryVersionMismatchCallback);
 
     const doDownloadAndInstall = async () => {
@@ -544,8 +529,11 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
       syncStatusChangeCallback(CodePush.SyncStatus.INSTALLING_UPDATE);
       await localPackage.install(resolvedInstallMode, syncOptions.minimumBackgroundDuration, () => {
 
-      // Place the getDeviceMetadata() function here, later
-      // await getDeviceMetadata();
+      // Activate thos lines later
+      // const config = await getConfiguration();
+      // const sdk = getPromisifiedSdk(requestFetchAdapter, config);
+      // const metadata = await getDeviceMetadata(sdk);
+      // await sdk.reportMetadataTest(metadata);
         syncStatusChangeCallback(CodePush.SyncStatus.UPDATE_INSTALLED);
       });
 
