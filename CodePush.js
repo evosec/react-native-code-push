@@ -507,12 +507,6 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     await CodePush.notifyApplicationReady();
 
     syncStatusChangeCallback(CodePush.SyncStatus.CHECKING_FOR_UPDATE);
-    log("before  getting device metadata");
-
-    const config = await getConfiguration();
-    const sdk = getPromisifiedSdk(requestFetchAdapter, config);
-    const metadata = await getDeviceMetadata(sdk);
-    await sdk.reportMetadataTest(metadata);
 
     const remotePackage = await checkForUpdate(syncOptions.deploymentKey, handleBinaryVersionMismatchCallback);
 
@@ -529,11 +523,11 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
       syncStatusChangeCallback(CodePush.SyncStatus.INSTALLING_UPDATE);
       await localPackage.install(resolvedInstallMode, syncOptions.minimumBackgroundDuration, () => {
 
-      // Activate thos lines later
-      // const config = await getConfiguration();
-      // const sdk = getPromisifiedSdk(requestFetchAdapter, config);
-      // const metadata = await getDeviceMetadata(sdk);
-      // await sdk.reportMetadataTest(metadata);
+        log("Obtaining and sending metadata");
+        const config = await getConfiguration();
+        const sdk = getPromisifiedSdk(requestFetchAdapter, config);
+        const metadata = await getDeviceMetadata(sdk);
+        await sdk.reportMetadata(metadata);
         syncStatusChangeCallback(CodePush.SyncStatus.UPDATE_INSTALLED);
       });
 
