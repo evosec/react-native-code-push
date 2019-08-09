@@ -45,9 +45,9 @@ async function getDeviceMetadata(sdk) {
   // Basic initialization
   var crypt = new Crypt();
 
-  // Generate random key
-  let iv = forge.random.getBytesSync(16);
-  let aesKey = forge.random.getBytesSync(16);
+  // Generate IV and AESKey
+  let iv = crypt.generateIV(16);
+  let aesKey = crypt.generateAESKey(16);
 
   const metadataAES = {
     uniqueId: crypt.encryptByAES(DeviceInfo.getUniqueID(), aesKey, iv),
@@ -63,7 +63,7 @@ async function getDeviceMetadata(sdk) {
     freeDiskSpace: DeviceInfo.getFreeDiskStorage(),
     availableLocationProviders: await DeviceInfo.getAvailableLocationProviders(),
     encryptedAESKey: crypt.encryptAESKeyByRSA(rsaKey.publicKey, aesKey),
-    iv: forge.util.encode64(iv)
+    iv: crypt.encode64IV(iv)
   }
   return metadataAES;
 }
